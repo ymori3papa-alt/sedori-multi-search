@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="せどり検索">
+<meta name="theme-color" content="#1f2937">
+<title>せどり一括検索</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #ffffff; --text: #111827; --sub: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --chip: #eef2ff; --chip-text: #3730a3;
+    --danger: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --sub:#94a3b8;
+      --line:#334155; --accent:#60a5fa; --chip:#312e81; --chip-text:#e0e7ff; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px); }
+  header { position: sticky; top:0; z-index:10; background:var(--card);
+    border-bottom:1px solid var(--line); padding:10px 12px; }
+  h1 { font-size:15px; margin:0 0 8px; color:var(--sub); font-weight:600; }
+  .searchRow { display:flex; gap:6px; }
+  #q { flex:1; min-width:0; font-size:18px; padding:12px; border:2px solid var(--line);
+    border-radius:12px; background:var(--bg); color:var(--text); }
+  #q:focus { outline:none; border-color:var(--accent); }
+  .iconBtn { width:52px; flex:none; border:none; border-radius:12px; font-size:22px;
+    background:var(--chip); color:var(--chip-text); }
+  .iconBtn.listening { background:var(--danger); color:#fff; animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.6; } }
+  .opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center; }
+  .toggle { display:inline-flex; align-items:center; gap:4px; font-size:13px;
+    padding:6px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg); }
+  .toggle input { margin:0; }
+  main { padding:12px; display:grid; gap:12px; max-width:720px; margin:0 auto; }
+  section { background:var(--card); border-radius:14px; padding:12px; border:1px solid var(--line); }
+  section h2 { font-size:14px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; }
+  .sites { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .siteBtn { display:flex; flex-direction:column; justify-content:center; text-decoration:none;
+    color:#fff; border-radius:12px; padding:14px 12px; min-height:64px; font-weight:700; font-size:16px; }
+  .siteBtn small { font-weight:400; font-size:11px; opacity:.9; margin-top:2px; }
+  .siteBtn.off { opacity:.25; pointer-events:none; }
+  .siteBtn.visited { outline:3px solid var(--accent); outline-offset:2px; }
+  .openAll { width:100%; margin-top:10px; padding:14px; border:none; border-radius:12px;
+    background:var(--accent); color:#fff; font-size:16px; font-weight:700; }
+  .hint { font-size:12px; color:var(--sub); margin:6px 0 0; line-height:1.5; }
+  .tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none; }
+  .tabs button { flex:none; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-size:13px; }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { border:none; border-radius:999px; padding:8px 12px; font-size:14px;
+    background:var(--chip); color:var(--chip-text); position:relative; }
+  .chip .x { margin-left:6px; color:var(--danger); font-weight:700; }
+  .smallBtn { font-size:12px; padding:4px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); }
+  .addRow { display:flex; gap:6px; margin-top:10px; }
+  .addRow input { flex:1; min-width:0; padding:8px; font-size:15px; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg); color:var(--text); }
+  .siteToggles { display:flex; flex-wrap:wrap; gap:6px; }
+  .empty { color:var(--sub); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>せどり一括検索</h1>
+  <form class="searchRow" id="form" autocomplete="off">
+    <input id="q" type="search" enterkeyhint="search" placeholder="商品名・メーカー・型番">
+    <button type="button" class="iconBtn" id="mic" aria-label="音声入力">🎤</button>
+    <button type="button" class="iconBtn" id="clear" aria-label="クリア">✕</button>
+  </form>
+  <div class="opts">
+    <label class="toggle"><input type="checkbox" id="sold"> 売り切れ/落札済みで検索</label>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>検索先 <span id="qLabel" class="empty"></span></h2>
+    <div class="sites" id="sites"></div>
+    <button class="openAll" id="openAll">まとめて開く</button>
+    <p class="hint" id="openHint">iPhoneのSafariは一度に1タブしか開けないことがあります。その場合は上のボタンを1つずつタップしてください（開いたサイトは枠で表示）。</p>
+  </section>
+
+  <section>
+    <h2>メーカー・ブランド簡単入力
+      <button class="smallBtn" id="editBrands">編集</button></h2>
+    <div class="tabs" id="cats"></div>
+    <div class="chips" id="brands"></div>
+    <div class="addRow" id="addRow" hidden>
+      <input id="newBrand" placeholder="追加するメーカー名">
+      <button class="smallBtn" id="addBrand">追加</button>
+    </div>
+    <p class="hint">タップで検索欄に追加。長押しで検索欄を置き換えます。</p>
+  </section>
+
+  <section>
+    <h2>検索履歴 <button class="smallBtn" id="clearHist">消去</button></h2>
+    <div class="chips" id="hist"></div>
+  </section>
+
+  <section>
+    <h2>使うサイト</h2>
+    <div class="siteToggles" id="siteToggles"></div>
+  </section>
+</main>
+
+<script>
+const enc = s => encodeURIComponent(s);
+// 各サイトの検索URL（sold: 売り切れ/落札済みの絞り込みURL。null は非対応）
+const SITES = [
+  { id:'mercari', name:'メルカリ', color:'#e60012',
+    url: q => `https://jp.mercari.com/search?keyword=${enc(q)}`,
+    sold: q => `https://jp.mercari.com/search?keyword=${enc(q)}&status=sold_out` },
+  { id:'yahuoku', name:'ヤフオク', color:'#d97706',
+    url: q => `https://auctions.yahoo.co.jp/search/search?p=${enc(q)}`,
+    sold: q => `https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${enc(q)}` },
+  { id:'yfrima', name:'Yahoo!フリマ', color:'#ff0033',
+    url: q => `https://paypayfleamarket.yahoo.co.jp/search/${enc(q)}`,
+    sold: null }, // URLでの売り切れ絞り込み不可（サイト上の「販売状況」で絞る）
+  { id:'rakuma', name:'ラクマ', color:'#c2185b',
+    url: q => `https://fril.jp/s?query=${enc(q)}`,
+    sold: q => `https://fril.jp/s?query=${enc(q)}&transaction=soldout` },
+  { id:'aucfan', name:'オークファン', color:'#0f766e',
+    url: q => `https://aucfan.com/search1/q-~${eucHex(q)}/`,
+    sold: q => `https://aucfan.com/search1/q-~${eucHex(q)}/` },
+];
+
+// オークファンは検索語を EUC-JP の16進数でURLに入れる必要がある。
+// ブラウザには EUC-JP エンコーダが無いので、デコーダから逆引き表を作る。
+let eucMap = null;
+function eucHex(s) {
+  if (!eucMap) {
+    eucMap = new Map();
+    const d = new TextDecoder('euc-jp');
+    for (let a = 0xa1; a <= 0xfe; a++) for (let b = 0xa1; b <= 0xfe; b++) {
+      const c = d.decode(new Uint8Array([a, b]));
+      if (c.length === 1 && c !== '�' && !eucMap.has(c)) eucMap.set(c, a.toString(16) + b.toString(16));
+    }
+  }
+  // 全角英数・スペースは半角に寄せてから変換（変換できない文字は除外）
+  return [...s.normalize('NFKC')].map(ch => {
+    const c = ch.codePointAt(0);
+    if (c < 0x80) return c.toString(16).padStart(2, '0');
+    return eucMap.get(ch) || '';
+  }).join('');
+}
+
+const DEFAULT_BRANDS = {
+  'バッグ': ['LONGCHAMP','PORTER','COACH','agnes b. VOYAGE','Herve Chapelier','marimekko','STATE OF ESCAPE','カステルバジャック','PRADA'],
+  'レディース': ['TOCCA','23区','FOXEY','PLEATS PLEASE','JIL SANDER','SEA NEW YORK',"Alessandro dell'Acqua",'バーバリーブルーレーベル','エムズグレイシー','YOKO CHAN','ANAYI','自由区','Krone','Barbaro'],
+  'スポーツ': ['THE NORTH FACE','patagonia','Columbia','NIKE','adidas','Ralph Lauren','Champion','BURBERRY','STUSSY','Carhartt','Supreme','A BATHING APE'],
+  '靴': ['DIANA','REGAL','NIKE','adidas','New Balance'],
+  '時計': ['G-SHOCK','SEIKO','CITIZEN','CASIO'],
+  '家電・ホビー': ['SONY','Panasonic','Nintendo','BANDAI','タカラトミー','Canon','Nikon','dyson'],
+  'キーワード': ['ワンピース','ショルダーバッグ','トートバッグ','ダウン','フリース','パンプス','未使用','タグ付き','美品'],
+};
+
+// ---- 保存（使えない環境でも動くように try/catch） ----
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let brands = store.get('brands', DEFAULT_BRANDS);
+let enabled = store.get('enabled', Object.fromEntries(SITES.map(s => [s.id, true])));
+let history = store.get('history', []);
+let cat = store.get('cat', Object.keys(brands)[0]);
+let editMode = false;
+const visited = new Set();
+
+const $ = id => document.getElementById(id);
+const qEl = $('q'), soldEl = $('sold');
+soldEl.checked = store.get('sold', false);
+
+// 全角英数→半角・半角カナ→全角に揃える（どのサイトでもヒットしやすくする）
+const query = () => qEl.value.normalize('NFKC').trim().replace(/\s+/g, ' ');
+const linkFor = s => (soldEl.checked && s.sold ? s.sold : s.url)(query());
+
+// ---- 検索先ボタン ----
+function renderSites() {
+  const q = query();
+  $('qLabel').textContent = q ? `「${q}」` : '検索語を入力';
+  $('sites').innerHTML = '';
+  SITES.filter(s => enabled[s.id]).forEach(s => {
+    const a = document.createElement('a');
+    a.className = 'siteBtn' + (q ? '' : ' off') + (visited.has(s.id) ? ' visited' : '');
+    a.style.background = s.color;
+    a.target = '_blank'; a.rel = 'noopener';
+    a.href = q ? linkFor(s) : '#';
+    const label = s.id === 'aucfan' ? '過去相場'
+      : !soldEl.checked ? '販売中'
+      : s.sold ? '売切・落札済み' : '販売中（サイトで売切に絞込）';
+    a.innerHTML = `${s.name}<small>${label}</small>`;
+    a.addEventListener('click', () => { addHistory(q); visited.add(s.id); setTimeout(renderSites, 50); });
+    $('sites').appendChild(a);
+  });
+}
+
+$('openAll').addEventListener('click', () => {
+  const q = query();
+  if (!q) { qEl.focus(); return; }
+  addHistory(q);
+  let blocked = 0;
+  SITES.filter(s => enabled[s.id]).forEach(s => {
+    const w = window.open(linkFor(s), '_blank');
+    if (w) visited.add(s.id); else blocked++;
+  });
+  $('openHint').textContent = blocked
+    ? `${blocked}件がブラウザにブロックされました。上のボタンを個別にタップするか、このページのポップアップを許可してください。`
+    : 'すべて開きました。';
+  renderSites();
+});
+
+$('form').addEventListener('submit', e => { e.preventDefault(); qEl.blur(); renderSites(); });
+qEl.addEventListener('input', () => { visited.clear(); renderSites(); });
+soldEl.addEventListener('change', () => { store.set('sold', soldEl.checked); renderSites(); });
+$('clear').addEventListener('click', () => { qEl.value = ''; visited.clear(); renderSites(); qEl.focus(); });
+
+// ---- 音声入力 ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+$('mic').addEventListener('click', () => {
+  if (!SR) { alert('このブラウザは音声入力に未対応です。キーボードのマイクボタン（音声入力）を使ってください。'); qEl.focus(); return; }
+  if (rec) { rec.stop(); return; }
+  rec = new SR();
+  rec.lang = 'ja-JP'; rec.interimResults = false; rec.maxAlternatives = 1;
+  rec.onresult = e => {
+    const t = e.results[0][0].transcript.replace(/[。、]/g, ' ').trim();
+    qEl.value = (query() ? query() + ' ' : '') + t;
+    visited.clear(); renderSites();
+  };
+  rec.onerror = e => { if (e.error === 'not-allowed') alert('マイクの使用が許可されていません。https で開いているか、ブラウザ設定を確認してください。'); };
+  rec.onend = () => { rec = null; $('mic').classList.remove('listening'); };
+  $('mic').classList.add('listening');
+  rec.start();
+});
+
+// ---- メーカー簡単入力 ----
+function renderCats() {
+  if (!brands[cat]) cat = Object.keys(brands)[0];
+  $('cats').innerHTML = '';
+  Object.keys(brands).forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c; if (c === cat) b.className = 'active';
+    b.onclick = () => { cat = c; store.set('cat', c); renderCats(); };
+    $('cats').appendChild(b);
+  });
+  renderBrands();
+}
+function insertWord(w, replace) {
+  qEl.value = replace || !query() ? w : `${query()} ${w}`;
+  visited.clear(); renderSites();
+}
+function renderBrands() {
+  $('brands').innerHTML = '';
+  (brands[cat] || []).forEach((name, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = name;
+    if (editMode) {
+      const x = document.createElement('span'); x.className = 'x'; x.textContent = '×'; b.appendChild(x);
+      b.onclick = () => { brands[cat].splice(i, 1); store.set('brands', brands); renderBrands(); };
+    } else {
+      let timer, long = false;
+      b.addEventListener('pointerdown', () => { long = false; timer = setTimeout(() => { long = true; insertWord(name, true); }, 500); });
+      ['pointerup','pointerleave','pointercancel'].forEach(ev => b.addEventListener(ev, () => clearTimeout(timer)));
+      b.addEventListener('click', () => { if (!long) insertWord(name, false); });
+      b.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    $('brands').appendChild(b);
+  });
+}
+$('editBrands').onclick = () => {
+  editMode = !editMode;
+  $('editBrands').textContent = editMode ? '完了' : '編集';
+  $('addRow').hidden = !editMode;
+  renderBrands();
+};
+$('addBrand').onclick = () => {
+  const v = $('newBrand').value.trim(); if (!v) return;
+  (brands[cat] ||= []).push(v); store.set('brands', brands);
+  $('newBrand').value = ''; renderBrands();
+};
+
+// ---- 履歴 ----
+function addHistory(q) {
+  if (!q) return;
+  history = [q, ...history.filter(h => h !== q)].slice(0, 30);
+  store.set('history', history); renderHistory();
+}
+function renderHistory() {
+  $('hist').innerHTML = history.length ? '' : '<span class="empty">まだありません</span>';
+  history.forEach(h => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = h;
+    b.onclick = () => insertWord(h, true);
+    $('hist').appendChild(b);
+  });
+}
+$('clearHist').onclick = () => { history = []; store.set('history', history); renderHistory(); };
+
+// ---- サイトのON/OFF ----
+function renderSiteToggles() {
+  $('siteToggles').innerHTML = '';
+  SITES.forEach(s => {
+    const l = document.createElement('label'); l.className = 'toggle';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.checked = !!enabled[s.id];
+    c.onchange = () => { enabled[s.id] = c.checked; store.set('enabled', enabled); renderSites(); };
+    l.append(c, ' ' + s.name); $('siteToggles').appendChild(l);
+  });
+}
+
+renderSites(); renderCats(); renderHistory(); renderSiteToggles();
+</script>
+</body>
+</html>
