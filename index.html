@@ -96,6 +96,8 @@
     padding-top:8px; font-size:16px; font-weight:700; }
   #cProfit { font-size:28px; color:#16a34a; }
   #cProfit.neg { color:var(--danger); }
+  .profitRow > span { text-align:right; }
+  #cRatio { display:block; font-size:12px; font-weight:400; color:var(--sub); }
 
   /* ---- 画面キーボード ---- */
   .kb { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--kbbg);
@@ -155,7 +157,8 @@
       <label>販売価格<span><input id="cSell" inputmode="numeric" placeholder="0"> 円</span></label>
       <label>手数料<span><input id="cRate" inputmode="decimal" class="short"> % <b id="cFee" class="minus">−0 円</b></span></label>
       <label>送料<span><input id="cShip" inputmode="numeric"> 円</span></label>
-      <div class="profitRow">利益 <output id="cProfit">0 円</output></div>
+      <label>仕入れ値<span><input id="cBuy" inputmode="numeric" placeholder="0"> 円</span></label>
+      <div class="profitRow">利益 <span><output id="cProfit">0 円</output><small id="cRatio"></small></span></div>
     </div>
   </section>
 
@@ -542,9 +545,9 @@ function renderHistory() {
 $('clearHist').onclick = () => { history = []; store.set('history', history); renderHistory(); };
 
 // ================= 利益計算 =================
-// 利益 = 販売価格 − 手数料(販売価格×率、1円未満切り捨て) − 送料
+// 利益 = 販売価格 − 手数料(販売価格×率、1円未満切り捨て) − 送料 − 仕入れ値
 const CALC_DEFAULT = { rate: '10', ship: '1000' };
-const calcIn = { sell: $('cSell'), rate: $('cRate'), ship: $('cShip') };
+const calcIn = { sell: $('cSell'), rate: $('cRate'), ship: $('cShip'), buy: $('cBuy') };
 const calcSaved = store.get('calc', { sell: '', ...CALC_DEFAULT });
 Object.keys(calcIn).forEach(k => { calcIn[k].value = calcSaved[k] ?? CALC_DEFAULT[k] ?? ''; });
 const num = el => {
@@ -554,8 +557,11 @@ const num = el => {
 const yen = n => n.toLocaleString('ja-JP') + ' 円';
 function calc() {
   const sell = num(calcIn.sell), fee = Math.floor(sell * num(calcIn.rate) / 100), ship = num(calcIn.ship);
-  const profit = sell - fee - ship;
+  const buy = num(calcIn.buy);
+  const profit = sell - fee - ship - buy;
   $('cFee').textContent = '−' + yen(fee);
+  // 利益率 = 利益 ÷ 仕入れ値（仕入れ値が入っているときだけ表示）
+  $('cRatio').textContent = sell && buy ? `利益率 ${Math.round(profit / buy * 100)}%（仕入れ値に対して）` : '';
   $('cProfit').textContent = sell ? yen(profit) : '— 円'; // 販売価格が未入力の間は計算しない
   $('cProfit').classList.toggle('neg', !!sell && profit < 0);
   store.set('calc', Object.fromEntries(Object.entries(calcIn).map(([k, el]) => [k, el.value])));
