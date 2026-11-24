@@ -2,100 +2,127 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="せどり検索">
-<meta name="theme-color" content="#1f2937">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
 <title>せどり一括検索</title>
 <style>
   :root {
-    --bg: #f3f4f6; --card: #ffffff; --text: #111827; --sub: #6b7280;
-    --line: #e5e7eb; --accent: #2563eb; --chip: #eef2ff; --chip-text: #3730a3;
-    --danger: #dc2626;
+    --bg:#f3f4f6; --card:#fff; --text:#111827; --sub:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --chip:#eef2ff; --chip-text:#3730a3; --danger:#dc2626;
+    --kbbg:#d1d5db; --key:#fff; --keyfn:#aeb4bd; --keyshadow:rgba(0,0,0,.35);
+    --kbh: 0px;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --sub:#94a3b8;
-      --line:#334155; --accent:#60a5fa; --chip:#312e81; --chip-text:#e0e7ff; }
+    :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --sub:#94a3b8; --line:#334155;
+      --accent:#60a5fa; --chip:#312e81; --chip-text:#e0e7ff;
+      --kbbg:#1f2937; --key:#4b5563; --keyfn:#374151; --keyshadow:rgba(0,0,0,.6); }
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { touch-action:manipulation; }
   body { margin:0; background:var(--bg); color:var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px); }
-  header { position: sticky; top:0; z-index:10; background:var(--card);
-    border-bottom:1px solid var(--line); padding:10px 12px; }
-  h1 { font-size:15px; margin:0 0 8px; color:var(--sub); font-weight:600; }
+    font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    padding-bottom:calc(var(--kbh) + 16px); -webkit-user-select:none; user-select:none; }
+  input { -webkit-user-select:text; user-select:text; }
+
+  /* ---- 検索欄 ---- */
+  header { position:sticky; top:0; z-index:10; background:var(--card);
+    border-bottom:1px solid var(--line); padding:calc(env(safe-area-inset-top) + 8px) 10px 8px; }
   .searchRow { display:flex; gap:6px; }
-  #q { flex:1; min-width:0; font-size:18px; padding:12px; border:2px solid var(--line);
+  #q { flex:1; min-width:0; font-size:20px; padding:10px 12px; border:2px solid var(--accent);
     border-radius:12px; background:var(--bg); color:var(--text); }
-  #q:focus { outline:none; border-color:var(--accent); }
-  .iconBtn { width:52px; flex:none; border:none; border-radius:12px; font-size:22px;
+  #q:focus { outline:none; }
+  .iconBtn { width:48px; flex:none; border:none; border-radius:12px; font-size:20px;
     background:var(--chip); color:var(--chip-text); }
   .iconBtn.listening { background:var(--danger); color:#fff; animation:pulse 1s infinite; }
   @keyframes pulse { 50% { opacity:.6; } }
-  .opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center; }
-  .toggle { display:inline-flex; align-items:center; gap:4px; font-size:13px;
-    padding:6px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg); }
-  .toggle input { margin:0; }
-  main { padding:12px; display:grid; gap:12px; max-width:720px; margin:0 auto; }
-  section { background:var(--card); border-radius:14px; padding:12px; border:1px solid var(--line); }
-  section h2 { font-size:14px; margin:0 0 8px; display:flex; justify-content:space-between; align-items:center; }
-  .sites { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
-  .siteBtn { display:flex; flex-direction:column; justify-content:center; text-decoration:none;
-    color:#fff; border-radius:12px; padding:14px 12px; min-height:64px; font-weight:700; font-size:16px; }
-  .siteBtn small { font-weight:400; font-size:11px; opacity:.9; margin-top:2px; }
-  .siteBtn.off { opacity:.25; pointer-events:none; }
-  .siteBtn.visited { outline:3px solid var(--accent); outline-offset:2px; }
-  .openAll { width:100%; margin-top:10px; padding:14px; border:none; border-radius:12px;
-    background:var(--accent); color:#fff; font-size:16px; font-weight:700; }
-  .hint { font-size:12px; color:var(--sub); margin:6px 0 0; line-height:1.5; }
+
+  main { padding:10px; display:grid; gap:10px; max-width:720px; margin:0 auto; }
+  section { background:var(--card); border-radius:14px; padding:10px; border:1px solid var(--line); }
+  section h2 { font-size:13px; margin:0 0 8px; color:var(--sub); display:flex;
+    justify-content:space-between; align-items:center; gap:8px; }
+
+  /* ---- 検索サイト ---- */
+  .sites { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .siteBtn { border:none; color:#fff; border-radius:10px; padding:8px 4px; min-height:54px;
+    font-weight:700; font-size:15px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; line-height:1.2; }
+  .siteBtn small { font-weight:400; font-size:10px; opacity:.9; margin-top:2px; }
+  .siteBtn:disabled { opacity:.3; }
+  .siteBtn.visited { box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--accent); }
+  .soldToggle { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--text);
+    padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--bg); }
+  .soldToggle input { margin:0; }
+
+  /* ---- メーカー・履歴 ---- */
   .tabs { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none; }
-  .tabs button { flex:none; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
+  .tabs::-webkit-scrollbar { display:none; }
+  .tabs button { flex:none; padding:5px 11px; border-radius:999px; border:1px solid var(--line);
     background:var(--bg); color:var(--text); font-size:13px; }
   .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
-  .chip { border:none; border-radius:999px; padding:8px 12px; font-size:14px;
-    background:var(--chip); color:var(--chip-text); position:relative; }
+  .chip { border:none; border-radius:999px; padding:7px 11px; font-size:14px;
+    background:var(--chip); color:var(--chip-text); }
   .chip .x { margin-left:6px; color:var(--danger); font-weight:700; }
   .smallBtn { font-size:12px; padding:4px 10px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--text); }
-  .addRow { display:flex; gap:6px; margin-top:10px; }
-  .addRow input { flex:1; min-width:0; padding:8px; font-size:15px; border-radius:8px;
+  .addRow { display:flex; gap:6px; margin-top:8px; }
+  .addRow input { flex:1; min-width:0; padding:8px; font-size:16px; border-radius:8px;
     border:1px solid var(--line); background:var(--bg); color:var(--text); }
-  .siteToggles { display:flex; flex-wrap:wrap; gap:6px; }
+  .hint { font-size:11px; color:var(--sub); margin:6px 0 0; line-height:1.5; }
   .empty { color:var(--sub); font-size:13px; }
+  details summary { font-size:13px; color:var(--sub); cursor:pointer; }
+  .setRow { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; align-items:center; font-size:13px; }
+  .setRow label { display:inline-flex; align-items:center; gap:4px; padding:5px 9px;
+    border-radius:999px; border:1px solid var(--line); background:var(--bg); }
+
+  /* ---- 画面キーボード ---- */
+  .kb { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--kbbg);
+    padding:6px 3px calc(env(safe-area-inset-bottom) + 6px); }
+  .kb[hidden] { display:none; }
+  .kgrid { display:grid; grid-template-columns:repeat(10, 1fr); gap:5px 4px; max-width:720px; margin:0 auto; }
+  .kgrid + .kgrid { margin-top:5px; }
+  .key { height:40px; border:none; border-radius:6px; background:var(--key); color:var(--text);
+    font-size:19px; padding:0; box-shadow:0 1px 0 var(--keyshadow); font-family:inherit; }
+  .key.fn { background:var(--keyfn); font-size:13px; }
+  .key.on { background:var(--accent); color:#fff; }
+  .key.blank { visibility:hidden; }
+  .key.pressed { background:var(--accent); color:#fff; }
+  .floatKb { position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom) + 12px); z-index:20;
+    border:none; border-radius:999px; padding:12px 16px; font-size:15px; font-weight:700;
+    background:var(--accent); color:#fff; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .floatKb[hidden] { display:none; }
 </style>
 </head>
 <body>
 <header>
-  <h1>せどり一括検索</h1>
   <form class="searchRow" id="form" autocomplete="off">
-    <input id="q" type="search" enterkeyhint="search" placeholder="商品名・メーカー・型番">
+    <input id="q" type="search" inputmode="none" enterkeyhint="search" placeholder="商品名・メーカー・型番">
     <button type="button" class="iconBtn" id="mic" aria-label="音声入力">🎤</button>
     <button type="button" class="iconBtn" id="clear" aria-label="クリア">✕</button>
   </form>
-  <div class="opts">
-    <label class="toggle"><input type="checkbox" id="sold"> 売り切れ/落札済みで検索</label>
-  </div>
 </header>
 
 <main>
   <section>
-    <h2>検索先 <span id="qLabel" class="empty"></span></h2>
+    <h2><span id="qLabel">検索語を入力してください</span>
+      <label class="soldToggle"><input type="checkbox" id="sold"> 売り切れで検索</label></h2>
     <div class="sites" id="sites"></div>
-    <button class="openAll" id="openAll">まとめて開く</button>
-    <p class="hint" id="openHint">iPhoneのSafariは一度に1タブしか開けないことがあります。その場合は上のボタンを1つずつタップしてください（開いたサイトは枠で表示）。</p>
+    <p class="hint">調べたいサイトをタップするとそのサイトの検索結果へ移動します。戻ると入力した文字はそのまま残ります。</p>
   </section>
 
   <section>
-    <h2>メーカー・ブランド簡単入力
-      <button class="smallBtn" id="editBrands">編集</button></h2>
+    <h2>メーカー・ブランド <button class="smallBtn" id="editBrands">編集</button></h2>
     <div class="tabs" id="cats"></div>
     <div class="chips" id="brands"></div>
     <div class="addRow" id="addRow" hidden>
       <input id="newBrand" placeholder="追加するメーカー名">
       <button class="smallBtn" id="addBrand">追加</button>
     </div>
-    <p class="hint">タップで検索欄に追加。長押しで検索欄を置き換えます。</p>
+    <p class="hint">タップ＝検索欄に追加／長押し＝検索欄を置き換え</p>
   </section>
 
   <section>
@@ -104,14 +131,30 @@
   </section>
 
   <section>
-    <h2>使うサイト</h2>
-    <div class="siteToggles" id="siteToggles"></div>
+    <details>
+      <summary>設定</summary>
+      <div class="setRow">使うサイト：<span id="siteToggles" style="display:contents"></span></div>
+      <div class="setRow">サイトの開き方：
+        <label><input type="radio" name="openMode" value="same"> この画面で移動</label>
+        <label><input type="radio" name="openMode" value="tab"> 新しいタブ</label></div>
+      <div class="setRow">50音の並び：
+        <label><input type="radio" name="kanaOrder" value="ltr"> あ が左</label>
+        <label><input type="radio" name="kanaOrder" value="rtl"> あ が右（カーナビ式）</label></div>
+    </details>
   </section>
 </main>
 
+<!-- 画面キーボード -->
+<div class="kb" id="kb">
+  <div class="kgrid" id="kbMain"></div>
+  <div class="kgrid" id="kbFn"></div>
+  <div class="kgrid" id="kbBottom"></div>
+</div>
+<button class="floatKb" id="floatKb" hidden>⌨ キーボード</button>
+
 <script>
+// ================= 検索サイト =================
 const enc = s => encodeURIComponent(s);
-// 各サイトの検索URL（sold: 売り切れ/落札済みの絞り込みURL。null は非対応）
 const SITES = [
   { id:'mercari', name:'メルカリ', color:'#e60012',
     url: q => `https://jp.mercari.com/search?keyword=${enc(q)}`,
@@ -142,8 +185,7 @@ function eucHex(s) {
       if (c.length === 1 && c !== '�' && !eucMap.has(c)) eucMap.set(c, a.toString(16) + b.toString(16));
     }
   }
-  // 全角英数・スペースは半角に寄せてから変換（変換できない文字は除外）
-  return [...s.normalize('NFKC')].map(ch => {
+  return [...s].map(ch => {
     const c = ch.codePointAt(0);
     if (c < 0x80) return c.toString(16).padStart(2, '0');
     return eucMap.get(ch) || '';
@@ -160,86 +202,246 @@ const DEFAULT_BRANDS = {
   'キーワード': ['ワンピース','ショルダーバッグ','トートバッグ','ダウン','フリース','パンプス','未使用','タグ付き','美品'],
 };
 
-// ---- 保存（使えない環境でも動くように try/catch） ----
+// ================= 保存 =================
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-let brands = store.get('brands', DEFAULT_BRANDS);
-let enabled = store.get('enabled', Object.fromEntries(SITES.map(s => [s.id, true])));
-let history = store.get('history', []);
-let cat = store.get('cat', Object.keys(brands)[0]);
+let brands   = store.get('brands', DEFAULT_BRANDS);
+let enabled  = store.get('enabled', Object.fromEntries(SITES.map(s => [s.id, true])));
+let history  = store.get('history', []);
+let cat      = store.get('cat', Object.keys(brands)[0]);
+let openMode = store.get('openMode', 'same');
+let kanaOrder = store.get('kanaOrder', 'ltr');
 let editMode = false;
-const visited = new Set();
 
 const $ = id => document.getElementById(id);
 const qEl = $('q'), soldEl = $('sold');
 soldEl.checked = store.get('sold', false);
+qEl.value = store.get('lastQ', '');
 
-// 全角英数→半角・半角カナ→全角に揃える（どのサイトでもヒットしやすくする）
+// 全角英数→半角・半角カナ→全角に揃える
 const query = () => qEl.value.normalize('NFKC').trim().replace(/\s+/g, ' ');
 const linkFor = s => (soldEl.checked && s.sold ? s.sold : s.url)(query());
+const visitedIds = () => { const v = store.get('visited', {}); return v.q === query() ? v.ids : []; };
 
-// ---- 検索先ボタン ----
+function changed() {
+  store.set('lastQ', qEl.value);
+  renderSites();
+}
+
+// ================= 検索サイトボタン =================
 function renderSites() {
-  const q = query();
-  $('qLabel').textContent = q ? `「${q}」` : '検索語を入力';
+  const q = query(), vis = visitedIds();
+  $('qLabel').textContent = q ? `「${q}」を調べる` : '検索語を入力してください';
   $('sites').innerHTML = '';
   SITES.filter(s => enabled[s.id]).forEach(s => {
-    const a = document.createElement('a');
-    a.className = 'siteBtn' + (q ? '' : ' off') + (visited.has(s.id) ? ' visited' : '');
-    a.style.background = s.color;
-    a.target = '_blank'; a.rel = 'noopener';
-    a.href = q ? linkFor(s) : '#';
+    const b = document.createElement('button');
+    b.className = 'siteBtn' + (vis.includes(s.id) ? ' visited' : '');
+    b.style.background = s.color;
+    b.disabled = !q;
     const label = s.id === 'aucfan' ? '過去相場'
       : !soldEl.checked ? '販売中'
-      : s.sold ? '売切・落札済み' : '販売中（サイトで売切に絞込）';
-    a.innerHTML = `${s.name}<small>${label}</small>`;
-    a.addEventListener('click', () => { addHistory(q); visited.add(s.id); setTimeout(renderSites, 50); });
-    $('sites').appendChild(a);
+      : s.sold ? '売り切れ' : '販売中※';
+    b.innerHTML = `${s.name}<small>${label}</small>`;
+    b.onclick = () => go(s);
+    $('sites').appendChild(b);
   });
 }
 
-$('openAll').addEventListener('click', () => {
-  const q = query();
-  if (!q) { qEl.focus(); return; }
+function go(s) {
+  const q = query(); if (!q) return;
   addHistory(q);
-  let blocked = 0;
-  SITES.filter(s => enabled[s.id]).forEach(s => {
-    const w = window.open(linkFor(s), '_blank');
-    if (w) visited.add(s.id); else blocked++;
-  });
-  $('openHint').textContent = blocked
-    ? `${blocked}件がブラウザにブロックされました。上のボタンを個別にタップするか、このページのポップアップを許可してください。`
-    : 'すべて開きました。';
+  store.set('visited', { q, ids: [...new Set([...visitedIds(), s.id])] });
+  const url = linkFor(s);
   renderSites();
-});
+  if (openMode === 'tab') window.open(url, '_blank');
+  else location.href = url;
+}
 
-$('form').addEventListener('submit', e => { e.preventDefault(); qEl.blur(); renderSites(); });
-qEl.addEventListener('input', () => { visited.clear(); renderSites(); });
 soldEl.addEventListener('change', () => { store.set('sold', soldEl.checked); renderSites(); });
-$('clear').addEventListener('click', () => { qEl.value = ''; visited.clear(); renderSites(); qEl.focus(); });
+$('form').addEventListener('submit', e => { e.preventDefault(); qEl.blur(); });
+qEl.addEventListener('input', changed);
+$('clear').addEventListener('click', () => { qEl.value = ''; changed(); });
+// ブラウザの「戻る」でキャッシュから復帰したとき
+window.addEventListener('pageshow', () => { qEl.value = store.get('lastQ', qEl.value); renderSites(); });
 
-// ---- 音声入力 ----
+// ================= 音声入力 =================
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 $('mic').addEventListener('click', () => {
-  if (!SR) { alert('このブラウザは音声入力に未対応です。キーボードのマイクボタン（音声入力）を使ってください。'); qEl.focus(); return; }
+  if (!SR) {
+    alert('この画面では音声入力が使えません。キーボードの「iPhone」に切り替えて、iPhoneキーボードのマイクで話してください。');
+    return;
+  }
   if (rec) { rec.stop(); return; }
   rec = new SR();
   rec.lang = 'ja-JP'; rec.interimResults = false; rec.maxAlternatives = 1;
   rec.onresult = e => {
     const t = e.results[0][0].transcript.replace(/[。、]/g, ' ').trim();
     qEl.value = (query() ? query() + ' ' : '') + t;
-    visited.clear(); renderSites();
+    changed();
   };
-  rec.onerror = e => { if (e.error === 'not-allowed') alert('マイクの使用が許可されていません。https で開いているか、ブラウザ設定を確認してください。'); };
+  rec.onerror = e => { if (e.error === 'not-allowed') alert('マイクの使用が許可されていません。iPhoneの設定 → Safari → マイク を確認してください。'); };
   rec.onend = () => { rec = null; $('mic').classList.remove('listening'); };
   $('mic').classList.add('listening');
   rec.start();
 });
 
-// ---- メーカー簡単入力 ----
+// ================= 画面キーボード =================
+const KANA_COLS = ['あいうえお','かきくけこ','さしすせそ','たちつてと','なにぬねの',
+                   'はひふへほ','まみむめも','や ゆ よ','らりるれろ','わをんー '];
+const pairMap = str => { const m = {}; for (let i = 0; i < str.length; i += 2) { m[str[i]] = str[i+1]; m[str[i+1]] = str[i]; } return m; };
+const VOICED = pairMap('かがきぎくぐけげこごさざしじすずせぜそぞただちぢつづてでとどはばひびふぶへべほぼうゔ');
+const SEMI   = pairMap('はぱひぴふぷへぺほぽ');
+const SMALL  = pairMap('あぁいぃうぅえぇおぉつっやゃゆゅよょわゎ');
+const toHira = c => { const n = c.charCodeAt(0); return n >= 0x30a1 && n <= 0x30f6 ? String.fromCharCode(n - 0x60) : c; };
+const toKata = c => { const n = c.charCodeAt(0); return n >= 0x3041 && n <= 0x3096 ? String.fromCharCode(n + 0x60) : c; };
+
+let kbMode = store.get('kbMode', 'kana');   // kana | abc | native
+let katakana = store.get('katakana', true); // ブランド名はカタカナが多いので既定はカナ
+let upper = true;
+
+function caret() {
+  const v = qEl.value;
+  if (document.activeElement !== qEl || qEl.selectionStart == null) return [v.length, v.length];
+  return [qEl.selectionStart, qEl.selectionEnd];
+}
+function setCaret(p) { if (document.activeElement === qEl) qEl.setSelectionRange(p, p); }
+function insert(t) {
+  const v = qEl.value, [s, e] = caret();
+  qEl.value = v.slice(0, s) + t + v.slice(e);
+  setCaret(s + t.length); changed();
+}
+function backspace() {
+  const v = qEl.value, [s, e] = caret();
+  if (s !== e) { qEl.value = v.slice(0, s) + v.slice(e); setCaret(s); }
+  else if (s > 0) { qEl.value = v.slice(0, s - 1) + v.slice(s); setCaret(s - 1); }
+  changed();
+}
+// 直前の1文字を濁点・半濁点・小文字に切り替える
+function modifyPrev(kind) {
+  const v = qEl.value, [s] = caret(); if (s === 0) return;
+  const c = v[s - 1], kata = c !== toHira(c), h = toHira(c);
+  let r = null;
+  if (kind === 'voiced') r = VOICED[h] || ({ぱ:'ば',ぴ:'び',ぷ:'ぶ',ぺ:'べ',ぽ:'ぼ'})[h];
+  if (kind === 'semi')   r = SEMI[h]   || ({ば:'ぱ',び:'ぴ',ぶ:'ぷ',べ:'ぺ',ぼ:'ぽ'})[h];
+  if (kind === 'small')  r = SMALL[h];
+  if (!r) return;
+  if (kata) r = toKata(r);
+  qEl.value = v.slice(0, s - 1) + r + v.slice(s);
+  setCaret(s); changed();
+}
+
+// キー定義: {label, act, span, cls}
+function k(label, act, opt = {}) { return { label, act, ...opt }; }
+function kanaKeys() {
+  const cols = kanaOrder === 'rtl' ? [...KANA_COLS].reverse() : KANA_COLS;
+  const keys = [];
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 10; c++) {
+    const ch = cols[c][r];
+    if (!ch || ch === ' ') { keys.push(k('', null, { cls:'blank' })); continue; }
+    const out = katakana && ch !== 'ー' ? toKata(ch) : ch;
+    keys.push(k(out, () => insert(out)));
+  }
+  return keys;
+}
+function kanaFnKeys() {
+  return [
+    k(katakana ? 'カナ→ひら' : 'ひら→カナ', () => { katakana = !katakana; store.set('katakana', katakana); renderKb(); }, { span:2, cls:'fn' }),
+    k('゛', () => modifyPrev('voiced'), { cls:'fn' }),
+    k('゜', () => modifyPrev('semi'), { cls:'fn' }),
+    k('小', () => modifyPrev('small'), { cls:'fn' }),
+    k('空白', () => insert(' '), { span:3, cls:'fn' }),
+    k('⌫', backspace, { span:2, cls:'fn', repeat:true }),
+  ];
+}
+function abcKeys() {
+  const L = s => [...s].map(ch => { const o = upper ? ch : ch.toLowerCase(); return k(o, () => insert(o)); });
+  return [
+    ...L('1234567890'),
+    ...L('QWERTYUIOP'),
+    ...L('ASDFGHJKL'), k('-', () => insert('-')),
+    k('⇧', () => { upper = !upper; renderKb(); }, { cls: 'fn' + (upper ? ' on' : '') }),
+    ...L('ZXCVBNM'), k('.', () => insert('.')), k('⌫', backspace, { cls:'fn', repeat:true }),
+  ];
+}
+function abcFnKeys() {
+  return [
+    k('&', () => insert('&')), k("'", () => insert("'")), k('/', () => insert('/')),
+    k('空白', () => insert(' '), { span:5, cls:'fn' }),
+    k('+', () => insert('+')), k('#', () => insert('#')),
+  ];
+}
+function bottomKeys() {
+  const tab = (label, mode) => k(label, () => setKbMode(mode), { span:2, cls:'fn' + (kbMode === mode ? ' on' : '') });
+  return [
+    tab('あいう', 'kana'), tab('ABC 123', 'abc'), tab('iPhone', 'native'),
+    k('全消去', () => { qEl.value = ''; changed(); }, { span:2, cls:'fn' }),
+    k('▼ 閉じる', () => setKbMode('hidden'), { span:2, cls:'fn' }),
+  ];
+}
+
+function fillGrid(el, keys) {
+  el.innerHTML = '';
+  keys.forEach(key => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'key ' + (key.cls || '');
+    b.textContent = key.label;
+    if (key.span) b.style.gridColumn = `span ${key.span}`;
+    if (key.act) bindKey(b, key);
+    el.appendChild(b);
+  });
+}
+// pointerdown で即反応（入力欄のフォーカス・カーソルを失わないよう preventDefault）
+function bindKey(b, key) {
+  let t1, t2;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); b.classList.remove('pressed'); };
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    b.classList.add('pressed');
+    key.act();
+    if (key.repeat) t1 = setTimeout(() => { t2 = setInterval(key.act, 70); }, 400);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+function renderKb() {
+  if (kbMode === 'kana') { fillGrid($('kbMain'), kanaKeys()); fillGrid($('kbFn'), kanaFnKeys()); }
+  if (kbMode === 'abc')  { fillGrid($('kbMain'), abcKeys());  fillGrid($('kbFn'), abcFnKeys()); }
+  fillGrid($('kbBottom'), bottomKeys());
+  updateKbHeight();
+}
+function updateKbHeight() {
+  const h = $('kb').hidden ? 70 : $('kb').offsetHeight;
+  document.documentElement.style.setProperty('--kbh', h + 'px');
+}
+function setKbMode(mode) {
+  if (mode === 'native') {
+    // iPhone標準キーボード（漢字変換・音声入力用）
+    kbMode = 'native'; store.set('kbMode', 'native');
+    $('kb').hidden = true; $('floatKb').hidden = false;
+    qEl.setAttribute('inputmode', 'search');
+    qEl.blur(); setTimeout(() => qEl.focus(), 0);
+  } else if (mode === 'hidden') {
+    $('kb').hidden = true; $('floatKb').hidden = false;
+    qEl.blur();
+  } else {
+    kbMode = mode; store.set('kbMode', mode);
+    qEl.setAttribute('inputmode', 'none');
+    qEl.blur();
+    $('kb').hidden = false; $('floatKb').hidden = true;
+    renderKb();
+  }
+  updateKbHeight();
+}
+$('floatKb').addEventListener('click', () => setKbMode(kbMode === 'native' ? 'kana' : kbMode));
+// 画面キーボード使用中に入力欄をタップしたら閉じていたキーボードを出す
+qEl.addEventListener('focus', () => { if (kbMode !== 'native' && $('kb').hidden) setKbMode(kbMode); });
+
+// ================= メーカー簡単入力 =================
 function renderCats() {
   if (!brands[cat]) cat = Object.keys(brands)[0];
   $('cats').innerHTML = '';
@@ -253,7 +455,7 @@ function renderCats() {
 }
 function insertWord(w, replace) {
   qEl.value = replace || !query() ? w : `${query()} ${w}`;
-  visited.clear(); renderSites();
+  changed();
 }
 function renderBrands() {
   $('brands').innerHTML = '';
@@ -285,7 +487,7 @@ $('addBrand').onclick = () => {
   $('newBrand').value = ''; renderBrands();
 };
 
-// ---- 履歴 ----
+// ================= 履歴 =================
 function addHistory(q) {
   if (!q) return;
   history = [q, ...history.filter(h => h !== q)].slice(0, 30);
@@ -301,18 +503,28 @@ function renderHistory() {
 }
 $('clearHist').onclick = () => { history = []; store.set('history', history); renderHistory(); };
 
-// ---- サイトのON/OFF ----
-function renderSiteToggles() {
+// ================= 設定 =================
+function renderSettings() {
   $('siteToggles').innerHTML = '';
   SITES.forEach(s => {
-    const l = document.createElement('label'); l.className = 'toggle';
+    const l = document.createElement('label');
     const c = document.createElement('input'); c.type = 'checkbox'; c.checked = !!enabled[s.id];
     c.onchange = () => { enabled[s.id] = c.checked; store.set('enabled', enabled); renderSites(); };
-    l.append(c, ' ' + s.name); $('siteToggles').appendChild(l);
+    l.append(c, s.name); $('siteToggles').appendChild(l);
+  });
+  document.querySelectorAll('input[name=openMode]').forEach(r => {
+    r.checked = r.value === openMode;
+    r.onchange = () => { openMode = r.value; store.set('openMode', openMode); };
+  });
+  document.querySelectorAll('input[name=kanaOrder]').forEach(r => {
+    r.checked = r.value === kanaOrder;
+    r.onchange = () => { kanaOrder = r.value; store.set('kanaOrder', kanaOrder); if (kbMode === 'kana') renderKb(); };
   });
 }
 
-renderSites(); renderCats(); renderHistory(); renderSiteToggles();
+renderSites(); renderCats(); renderHistory(); renderSettings();
+setKbMode(kbMode === 'native' ? 'kana' : kbMode); // 起動時は画面キーボードで開始
+window.addEventListener('resize', updateKbHeight);
 </script>
 </body>
 </html>
