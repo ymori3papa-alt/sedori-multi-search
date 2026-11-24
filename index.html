@@ -86,12 +86,16 @@
 
   /* ---- 利益計算 ---- */
   .calc { display:grid; gap:8px; }
-  .calc label { display:flex; justify-content:space-between; align-items:center; font-size:15px; }
-  .calc label span { display:flex; align-items:center; gap:6px; }
+  .calc label, .calc .row { display:flex; justify-content:space-between; align-items:center; font-size:15px; }
+  .calc label > span, .calc .row > span:last-child { display:flex; align-items:center; gap:6px; }
   .calc input { width:130px; font-size:20px; text-align:right; padding:8px 10px; border-radius:10px;
     border:1px solid var(--line); background:var(--bg); color:var(--text); font-family:inherit; }
   .calc input.short { width:70px; }
-  .calc .minus { font-weight:400; font-size:13px; color:var(--sub); min-width:70px; text-align:right; }
+  .calc .lbl { display:block; }
+  .calc .minus { display:block; font-weight:400; font-size:12px; color:var(--sub); }
+  .ratePreset { border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:8px;
+    padding:8px 8px; font-size:15px; font-family:inherit; }
+  .ratePreset.on { background:var(--accent); color:#fff; border-color:var(--accent); }
   .profitRow { display:flex; justify-content:space-between; align-items:center; border-top:2px solid var(--line);
     padding-top:8px; font-size:16px; font-weight:700; }
   #cProfit { font-size:28px; color:#16a34a; }
@@ -155,7 +159,9 @@
     <h2>利益計算 <button class="smallBtn" id="calcReset">手数料・送料を初期値に</button></h2>
     <div class="calc">
       <label>販売価格<span><input id="cSell" inputmode="numeric" placeholder="0"> 円</span></label>
-      <label>手数料<span><input id="cRate" inputmode="decimal" class="short"> % <b id="cFee" class="minus">−0 円</b></span></label>
+      <div class="row"><span class="lbl">手数料<b id="cFee" class="minus">−0 円</b></span>
+        <span><button type="button" class="ratePreset" data-rate="5">5%</button><button type="button" class="ratePreset" data-rate="10">10%</button>
+        <input id="cRate" inputmode="decimal" class="short" aria-label="手数料率"> %</span></div>
       <label>送料<span><input id="cShip" inputmode="numeric"> 円</span></label>
       <label>仕入れ値<span><input id="cBuy" inputmode="numeric" placeholder="0"> 円</span></label>
       <div class="profitRow">利益 <span><output id="cProfit">0 円</output><small id="cRatio"></small></span></div>
@@ -560,6 +566,7 @@ function calc() {
   const buy = num(calcIn.buy);
   const profit = sell - fee - ship - buy;
   $('cFee').textContent = '−' + yen(fee);
+  document.querySelectorAll('.ratePreset').forEach(b => b.classList.toggle('on', num(calcIn.rate) === +b.dataset.rate));
   // 利益率 = 利益 ÷ 仕入れ値（仕入れ値が入っているときだけ表示）
   $('cRatio').textContent = sell && buy ? `利益率 ${Math.round(profit / buy * 100)}%（仕入れ値に対して）` : '';
   $('cProfit').textContent = sell ? yen(profit) : '— 円'; // 販売価格が未入力の間は計算しない
@@ -571,7 +578,11 @@ Object.values(calcIn).forEach(el => {
   // 数字入力中は画面キーボードを下げて iPhone のテンキーを使う
   el.addEventListener('focus', () => { if (!$('kb').hidden) setKbMode('hidden'); el.select(); });
 });
-$('calcReset').onclick = () => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; calc(); };
+// 5% / 10% ボタンで手数料率を選択（数字欄に直接入力も可）
+document.querySelectorAll('.ratePreset').forEach(b => b.addEventListener('click', e => {
+  e.preventDefault(); calcIn.rate.value = b.dataset.rate; calc();
+}));
+$('calcReset').onclick =() => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; calc(); };
 calc();
 
 // ================= 設定 =================
