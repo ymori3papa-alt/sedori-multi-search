@@ -119,16 +119,10 @@
   .pItem .pf { font-weight:700; color:#16a34a; }
   .pItem .pf.neg { color:var(--danger); }
   .pItem .del, .pItem .edit { border:none; background:none; color:var(--danger); font-size:20px; padding:6px 6px; }
-  .pEdit { background:var(--bg); border-radius:10px; padding:10px; margin:4px 0; border-top:none; }
-  .pEdit input { width:100%; font-size:17px; padding:8px; border-radius:8px; border:1px solid var(--line);
-    background:var(--card); color:var(--text); font-family:inherit; }
-  .pEdit .eGrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
-  .pEdit .eGrid label { font-size:12px; color:var(--sub); }
-  .pEdit .eGrid input { text-align:right; margin-top:2px; }
-  .pEdit .eProfit { margin-top:8px; font-size:14px; text-align:right; }
-  .pEdit .eBtns { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
-  .pEdit .eSave { border:none; border-radius:10px; background:var(--accent); color:#fff; font-size:16px;
-    font-weight:700; padding:10px 24px; font-family:inherit; }
+  .pItem.editing { background:var(--chip); border-radius:10px; padding:8px; outline:2px solid var(--accent); }
+  .buyBtn.editing { background:var(--accent); }
+  .cancelBtn { padding:10px; border-radius:12px; border:1px solid var(--line); background:var(--bg);
+    color:var(--text); font-size:15px; font-family:inherit; }
 
   /* ---- 画面キーボード ---- */
   .kb { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--kbbg);
@@ -182,7 +176,7 @@
     <div class="chips" id="hist"></div>
   </section>
 
-  <section>
+  <section id="calcSection">
     <h2>利益計算 <button class="smallBtn" id="calcReset">手数料・送料を初期値に</button></h2>
     <div class="calc">
       <label>販売価格<span><input id="cSell" inputmode="numeric" placeholder="0"> 円</span></label>
@@ -193,6 +187,7 @@
       <label>仕入れ値<span><input id="cBuy" inputmode="numeric" placeholder="0"> 円</span></label>
       <div class="profitRow">利益 <span><output id="cProfit">0 円</output><small id="cRatio"></small></span></div>
       <button type="button" class="buyBtn" id="addPurchase">＋ 仕入れる（一覧に追加）</button>
+      <button type="button" class="cancelBtn" id="cancelEdit" hidden>修正をやめる</button>
       <p class="hint" id="addMsg">商品名は検索欄の文字が入ります。</p>
     </div>
   </section>
@@ -622,45 +617,9 @@ calc();
 
 // ================= 仕入れ一覧 =================
 let purchases = store.get('purchases', []);
-let editingIndex = -1; // 修正中の行（-1 = なし）
+let editingIndex = -1;  // 修正中の行（-1 = なし）
+let beforeEdit = null;  // 修正を始める前の検索欄・手数料・送料（終わったら戻す）
 
-// 一覧の1件を修正するフォーム（入力に合わせて利益をその場で再計算）
-function editForm(p, i) {
-  const box = document.createElement('div'); box.className = 'pItem pEdit';
-  box.innerHTML = `<div class="body">
-      <input class="eName" value="${esc(p.name)}" placeholder="商品名">
-      <div class="eGrid">
-        <label>販売価格<input class="eSell" inputmode="numeric" value="${p.sell || ''}"></label>
-        <label>仕入れ値<input class="eBuy" inputmode="numeric" value="${p.buy || ''}"></label>
-        <label>手数料 %<input class="eRate" inputmode="decimal" value="${p.rate}"></label>
-        <label>送料<input class="eShip" inputmode="numeric" value="${p.ship}"></label>
-      </div>
-      <div class="eProfit"></div>
-      <div class="eBtns"><button class="eCancel smallBtn">キャンセル</button><button class="eSave">保存</button></div>
-    </div>`;
-  const f = c => box.querySelector(c);
-  const vals = () => {
-    const sell = num(f('.eSell')), buy = num(f('.eBuy')), rate = num(f('.eRate')), ship = num(f('.eShip'));
-    const fee = Math.floor(sell * rate / 100);
-    return { sell, buy, rate, ship, fee, profit: sell - fee - ship - buy };
-  };
-  const preview = () => {
-    const v = vals();
-    f('.eProfit').innerHTML = `手数料 −${yen(v.fee)}　利益 <span class="pf${v.profit < 0 ? ' neg' : ''}">${yen(v.profit)}</span>`;
-  };
-  box.querySelectorAll('input').forEach(el => {
-    el.addEventListener('input', preview);
-    el.addEventListener('focus', () => { if (!$('kb').hidden) setKbMode('hidden'); });
-  });
-  f('.eCancel').onclick = () => { editingIndex = -1; renderPurchases(); };
-  f('.eSave').onclick = () => {
-    purchases[i] = { ...p, ...vals(), name: f('.eName').value.trim() || '（商品名なし）' };
-    store.set('purchases', purchases);
-    editingIndex = -1; renderPurchases();
-  };
-  preview();
-  return box;
-}
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 function renderPurchases() {
   const sum = k => purchases.reduce((a, p) => a + (p[k] || 0), 0);
@@ -673,43 +632,83 @@ function renderPurchases() {
   $('pList').innerHTML = purchases.length ? '' : '<span class="empty">まだありません。上の「仕入れる」で追加できます。</span>';
   // 新しい順に表示
   purchases.map((p, i) => [p, i]).reverse().forEach(([p, i]) => {
-    if (i === editingIndex) { $('pList').appendChild(editForm(p, i)); return; }
-    const row = document.createElement('div'); row.className = 'pItem';
+    const row = document.createElement('div');
+    row.className = 'pItem' + (i === editingIndex ? ' editing' : '');
     row.innerHTML = `<div class="body">
-        <div class="name">${esc(p.name)}</div>
+        <div class="name">${i === editingIndex ? '✏️ 修正中：' : ''}${esc(p.name)}</div>
         <div class="meta">${esc(p.date)}　仕入 ${yen(p.buy)} → 販売 ${yen(p.sell)}<br>
           手数料${p.rate}%・送料${yen(p.ship)}　利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
       </div><button class="edit" aria-label="修正">✏️</button><button class="del" aria-label="削除">🗑</button>`;
-    row.querySelector('.edit').onclick = () => {
-      editingIndex = i;
-      if (!$('kb').hidden) setKbMode('hidden'); // 画面キーボードで保存ボタンが隠れないように
-      renderPurchases();
-      document.querySelector('.pEdit')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    };
+    row.querySelector('.edit').onclick = () => startEdit(i);
     row.querySelector('.del').onclick = () => {
       if (!confirm(`「${p.name}」を一覧から削除しますか？`)) return;
-      purchases.splice(i, 1); store.set('purchases', purchases); editingIndex = -1; renderPurchases();
+      purchases.splice(i, 1); store.set('purchases', purchases);
+      if (i === editingIndex) endEdit('修正中の商品を削除しました。');
+      else if (i < editingIndex) editingIndex--;
+      renderPurchases();
     };
     $('pList').appendChild(row);
   });
 }
+
+// ✏️：一覧の値を上の検索欄・利益計算欄に戻して、そこで修正する
+function startEdit(i) {
+  const p = purchases[i];
+  if (editingIndex < 0) beforeEdit = { q: qEl.value, rate: calcIn.rate.value, ship: calcIn.ship.value };
+  editingIndex = i;
+  qEl.value = p.name === '（商品名なし）' ? '' : p.name; changed();
+  calcIn.sell.value = p.sell || ''; calcIn.buy.value = p.buy || '';
+  calcIn.rate.value = p.rate; calcIn.ship.value = p.ship; calc();
+  setEditUI(`「${p.name}」を修正中です。上の検索欄・金額を直して「修正を保存」を押してください。`);
+  renderPurchases();
+  if (!$('kb').hidden) setKbMode('hidden');
+  $('calcSection').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function endEdit(msg) {
+  editingIndex = -1;
+  calcIn.sell.value = ''; calcIn.buy.value = '';
+  if (beforeEdit) {
+    qEl.value = beforeEdit.q; changed();
+    calcIn.rate.value = beforeEdit.rate; calcIn.ship.value = beforeEdit.ship;
+    beforeEdit = null;
+  }
+  calc(); setEditUI(msg);
+}
+function setEditUI(msg) {
+  const editing = editingIndex >= 0;
+  $('addPurchase').textContent = editing ? '✔ 修正を保存' : '＋ 仕入れる（一覧に追加）';
+  $('addPurchase').classList.toggle('editing', editing);
+  $('cancelEdit').hidden = !editing;
+  if (msg) $('addMsg').textContent = msg;
+}
+
 $('addPurchase').onclick = () => {
   const sell = num(calcIn.sell), buy = num(calcIn.buy), rate = num(calcIn.rate), ship = num(calcIn.ship);
   if (!sell && !buy) { $('addMsg').textContent = '販売価格か仕入れ値を入力してください。'; return; }
   const fee = Math.floor(sell * rate / 100);
-  const d = new Date();
   const name = query() || '（商品名なし）';
-  purchases.push({ name, sell, buy, rate, ship, fee, profit: sell - fee - ship - buy,
-    date: `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` });
-  store.set('purchases', purchases);
-  // 次の商品用に販売価格と仕入れ値を空にする（手数料・送料はそのまま）
-  calcIn.sell.value = ''; calcIn.buy.value = ''; calc();
+  const vals = { name, sell, buy, rate, ship, fee, profit: sell - fee - ship - buy };
+  if (editingIndex >= 0) {
+    purchases[editingIndex] = { ...purchases[editingIndex], ...vals };
+    store.set('purchases', purchases);
+    endEdit(`「${name}」を修正しました。`);
+  } else {
+    const d = new Date();
+    purchases.push({ ...vals,
+      date: `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` });
+    store.set('purchases', purchases);
+    // 次の商品用に販売価格と仕入れ値を空にする（手数料・送料はそのまま）
+    calcIn.sell.value = ''; calcIn.buy.value = ''; calc();
+    $('addMsg').textContent = `「${name}」を仕入れ一覧に追加しました。`;
+  }
   renderPurchases();
-  $('addMsg').textContent = `「${name}」を仕入れ一覧に追加しました。`;
 };
+$('cancelEdit').onclick = () => { endEdit('修正をやめました。'); renderPurchases(); };
 $('clearPurchases').onclick = () => {
   if (!purchases.length || !confirm(`仕入れ一覧 ${purchases.length} 件をすべて削除しますか？（元に戻せません）`)) return;
-  purchases = []; store.set('purchases', purchases); renderPurchases();
+  purchases = []; store.set('purchases', purchases);
+  if (editingIndex >= 0) endEdit('');
+  renderPurchases();
 };
 renderPurchases();
 
