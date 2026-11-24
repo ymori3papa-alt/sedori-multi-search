@@ -118,7 +118,17 @@
   .pItem .meta { font-size:12px; color:var(--sub); margin-top:2px; }
   .pItem .pf { font-weight:700; color:#16a34a; }
   .pItem .pf.neg { color:var(--danger); }
-  .pItem .del { border:none; background:none; color:var(--danger); font-size:20px; padding:6px 8px; }
+  .pItem .del, .pItem .edit { border:none; background:none; color:var(--danger); font-size:20px; padding:6px 6px; }
+  .pEdit { background:var(--bg); border-radius:10px; padding:10px; margin:4px 0; border-top:none; }
+  .pEdit input { width:100%; font-size:17px; padding:8px; border-radius:8px; border:1px solid var(--line);
+    background:var(--card); color:var(--text); font-family:inherit; }
+  .pEdit .eGrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+  .pEdit .eGrid label { font-size:12px; color:var(--sub); }
+  .pEdit .eGrid input { text-align:right; margin-top:2px; }
+  .pEdit .eProfit { margin-top:8px; font-size:14px; text-align:right; }
+  .pEdit .eBtns { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+  .pEdit .eSave { border:none; border-radius:10px; background:var(--accent); color:#fff; font-size:16px;
+    font-weight:700; padding:10px 24px; font-family:inherit; }
 
   /* ---- 画面キーボード ---- */
   .kb { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--kbbg);
@@ -612,6 +622,45 @@ calc();
 
 // ================= 仕入れ一覧 =================
 let purchases = store.get('purchases', []);
+let editingIndex = -1; // 修正中の行（-1 = なし）
+
+// 一覧の1件を修正するフォーム（入力に合わせて利益をその場で再計算）
+function editForm(p, i) {
+  const box = document.createElement('div'); box.className = 'pItem pEdit';
+  box.innerHTML = `<div class="body">
+      <input class="eName" value="${esc(p.name)}" placeholder="商品名">
+      <div class="eGrid">
+        <label>販売価格<input class="eSell" inputmode="numeric" value="${p.sell || ''}"></label>
+        <label>仕入れ値<input class="eBuy" inputmode="numeric" value="${p.buy || ''}"></label>
+        <label>手数料 %<input class="eRate" inputmode="decimal" value="${p.rate}"></label>
+        <label>送料<input class="eShip" inputmode="numeric" value="${p.ship}"></label>
+      </div>
+      <div class="eProfit"></div>
+      <div class="eBtns"><button class="eCancel smallBtn">キャンセル</button><button class="eSave">保存</button></div>
+    </div>`;
+  const f = c => box.querySelector(c);
+  const vals = () => {
+    const sell = num(f('.eSell')), buy = num(f('.eBuy')), rate = num(f('.eRate')), ship = num(f('.eShip'));
+    const fee = Math.floor(sell * rate / 100);
+    return { sell, buy, rate, ship, fee, profit: sell - fee - ship - buy };
+  };
+  const preview = () => {
+    const v = vals();
+    f('.eProfit').innerHTML = `手数料 −${yen(v.fee)}　利益 <span class="pf${v.profit < 0 ? ' neg' : ''}">${yen(v.profit)}</span>`;
+  };
+  box.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', preview);
+    el.addEventListener('focus', () => { if (!$('kb').hidden) setKbMode('hidden'); });
+  });
+  f('.eCancel').onclick = () => { editingIndex = -1; renderPurchases(); };
+  f('.eSave').onclick = () => {
+    purchases[i] = { ...p, ...vals(), name: f('.eName').value.trim() || '（商品名なし）' };
+    store.set('purchases', purchases);
+    editingIndex = -1; renderPurchases();
+  };
+  preview();
+  return box;
+}
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 function renderPurchases() {
   const sum = k => purchases.reduce((a, p) => a + (p[k] || 0), 0);
@@ -624,15 +673,22 @@ function renderPurchases() {
   $('pList').innerHTML = purchases.length ? '' : '<span class="empty">まだありません。上の「仕入れる」で追加できます。</span>';
   // 新しい順に表示
   purchases.map((p, i) => [p, i]).reverse().forEach(([p, i]) => {
+    if (i === editingIndex) { $('pList').appendChild(editForm(p, i)); return; }
     const row = document.createElement('div'); row.className = 'pItem';
     row.innerHTML = `<div class="body">
         <div class="name">${esc(p.name)}</div>
         <div class="meta">${esc(p.date)}　仕入 ${yen(p.buy)} → 販売 ${yen(p.sell)}<br>
           手数料${p.rate}%・送料${yen(p.ship)}　利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
-      </div><button class="del" aria-label="削除">🗑</button>`;
+      </div><button class="edit" aria-label="修正">✏️</button><button class="del" aria-label="削除">🗑</button>`;
+    row.querySelector('.edit').onclick = () => {
+      editingIndex = i;
+      if (!$('kb').hidden) setKbMode('hidden'); // 画面キーボードで保存ボタンが隠れないように
+      renderPurchases();
+      document.querySelector('.pEdit')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
     row.querySelector('.del').onclick = () => {
       if (!confirm(`「${p.name}」を一覧から削除しますか？`)) return;
-      purchases.splice(i, 1); store.set('purchases', purchases); renderPurchases();
+      purchases.splice(i, 1); store.set('purchases', purchases); editingIndex = -1; renderPurchases();
     };
     $('pList').appendChild(row);
   });
