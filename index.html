@@ -103,6 +103,23 @@
   .profitRow > span { text-align:right; }
   #cRatio { display:block; font-size:12px; font-weight:400; color:var(--sub); }
 
+  .buyBtn { margin-top:4px; padding:14px; border:none; border-radius:12px; background:#16a34a; color:#fff;
+    font-size:17px; font-weight:700; font-family:inherit; }
+
+  /* ---- 仕入れ一覧 ---- */
+  .totals { display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-bottom:8px; }
+  .totals div { background:var(--bg); border-radius:10px; padding:8px 10px; font-size:12px; color:var(--sub); }
+  .totals b { display:block; font-size:18px; color:var(--text); }
+  .totals .profit b { color:#16a34a; }
+  .totals .profit.neg b { color:var(--danger); }
+  .pItem { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:8px 0; }
+  .pItem .body { flex:1; min-width:0; }
+  .pItem .name { font-size:15px; font-weight:700; overflow-wrap:anywhere; }
+  .pItem .meta { font-size:12px; color:var(--sub); margin-top:2px; }
+  .pItem .pf { font-weight:700; color:#16a34a; }
+  .pItem .pf.neg { color:var(--danger); }
+  .pItem .del { border:none; background:none; color:var(--danger); font-size:20px; padding:6px 8px; }
+
   /* ---- 画面キーボード ---- */
   .kb { position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--kbbg);
     padding:6px 3px calc(env(safe-area-inset-bottom) + 6px); }
@@ -165,7 +182,15 @@
       <label>送料<span><input id="cShip" inputmode="numeric"> 円</span></label>
       <label>仕入れ値<span><input id="cBuy" inputmode="numeric" placeholder="0"> 円</span></label>
       <div class="profitRow">利益 <span><output id="cProfit">0 円</output><small id="cRatio"></small></span></div>
+      <button type="button" class="buyBtn" id="addPurchase">＋ 仕入れる（一覧に追加）</button>
+      <p class="hint" id="addMsg">商品名は検索欄の文字が入ります。</p>
     </div>
+  </section>
+
+  <section>
+    <h2>仕入れ一覧 <button class="smallBtn" id="clearPurchases">全削除</button></h2>
+    <div class="totals" id="pTotals"></div>
+    <div id="pList"></div>
   </section>
 
   <section>
@@ -582,8 +607,55 @@ Object.values(calcIn).forEach(el => {
 document.querySelectorAll('.ratePreset').forEach(b => b.addEventListener('click', e => {
   e.preventDefault(); calcIn.rate.value = b.dataset.rate; calc();
 }));
-$('calcReset').onclick =() => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; calc(); };
+$('calcReset').onclick = () => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; calc(); };
 calc();
+
+// ================= 仕入れ一覧 =================
+let purchases = store.get('purchases', []);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function renderPurchases() {
+  const sum = k => purchases.reduce((a, p) => a + (p[k] || 0), 0);
+  const profit = sum('profit');
+  $('pTotals').innerHTML = `
+    <div>件数<b>${purchases.length} 件</b></div>
+    <div>仕入れ合計<b>${yen(sum('buy'))}</b></div>
+    <div>販売予定合計<b>${yen(sum('sell'))}</b></div>
+    <div class="profit${profit < 0 ? ' neg' : ''}">利益合計<b>${yen(profit)}</b></div>`;
+  $('pList').innerHTML = purchases.length ? '' : '<span class="empty">まだありません。上の「仕入れる」で追加できます。</span>';
+  // 新しい順に表示
+  purchases.map((p, i) => [p, i]).reverse().forEach(([p, i]) => {
+    const row = document.createElement('div'); row.className = 'pItem';
+    row.innerHTML = `<div class="body">
+        <div class="name">${esc(p.name)}</div>
+        <div class="meta">${esc(p.date)}　仕入 ${yen(p.buy)} → 販売 ${yen(p.sell)}<br>
+          手数料${p.rate}%・送料${yen(p.ship)}　利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
+      </div><button class="del" aria-label="削除">🗑</button>`;
+    row.querySelector('.del').onclick = () => {
+      if (!confirm(`「${p.name}」を一覧から削除しますか？`)) return;
+      purchases.splice(i, 1); store.set('purchases', purchases); renderPurchases();
+    };
+    $('pList').appendChild(row);
+  });
+}
+$('addPurchase').onclick = () => {
+  const sell = num(calcIn.sell), buy = num(calcIn.buy), rate = num(calcIn.rate), ship = num(calcIn.ship);
+  if (!sell && !buy) { $('addMsg').textContent = '販売価格か仕入れ値を入力してください。'; return; }
+  const fee = Math.floor(sell * rate / 100);
+  const d = new Date();
+  const name = query() || '（商品名なし）';
+  purchases.push({ name, sell, buy, rate, ship, fee, profit: sell - fee - ship - buy,
+    date: `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` });
+  store.set('purchases', purchases);
+  // 次の商品用に販売価格と仕入れ値を空にする（手数料・送料はそのまま）
+  calcIn.sell.value = ''; calcIn.buy.value = ''; calc();
+  renderPurchases();
+  $('addMsg').textContent = `「${name}」を仕入れ一覧に追加しました。`;
+};
+$('clearPurchases').onclick = () => {
+  if (!purchases.length || !confirm(`仕入れ一覧 ${purchases.length} 件をすべて削除しますか？（元に戻せません）`)) return;
+  purchases = []; store.set('purchases', purchases); renderPurchases();
+};
+renderPurchases();
 
 // ================= 設定 =================
 function renderSettings() {
