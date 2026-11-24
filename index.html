@@ -32,8 +32,13 @@
   header { position:sticky; top:0; z-index:10; background:var(--card);
     border-bottom:1px solid var(--line); padding:calc(env(safe-area-inset-top) + 8px) 10px 8px; }
   .searchRow { display:flex; gap:6px; }
-  #q { flex:1; min-width:0; font-size:20px; padding:10px 12px; border:2px solid var(--accent);
-    border-radius:12px; background:var(--bg); color:var(--text); }
+  /* 長い文字も全部見えるよう、折り返して高さを自動で伸ばす */
+  #q { flex:1; min-width:0; font-size:20px; line-height:1.3; padding:10px 12px; border:2px solid var(--accent);
+    border-radius:12px; background:var(--bg); color:var(--text); font-family:inherit;
+    resize:none; overflow-y:auto; max-height:6.8em; overflow-wrap:anywhere; display:block; }
+  .searchRow { align-items:flex-start; }
+  .iconBtn { height:50px; }
+  input, textarea { -webkit-user-select:text; user-select:text; }
   #q:focus { outline:none; }
   .iconBtn { width:48px; flex:none; border:none; border-radius:12px; font-size:20px;
     background:var(--chip); color:var(--chip-text); }
@@ -100,7 +105,8 @@
 <body>
 <header>
   <form class="searchRow" id="form" autocomplete="off">
-    <input id="q" type="search" inputmode="none" enterkeyhint="search" placeholder="商品名・メーカー・型番">
+    <textarea id="q" rows="1" inputmode="none" enterkeyhint="search" placeholder="商品名・型番など"
+      autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
     <button type="button" class="iconBtn" id="mic" aria-label="音声入力">🎤</button>
     <button type="button" class="iconBtn" id="clear" aria-label="クリア">✕</button>
   </form>
@@ -225,10 +231,19 @@ const query = () => qEl.value.normalize('NFKC').trim().replace(/\s+/g, ' ');
 const linkFor = s => (soldEl.checked && s.sold ? s.sold : s.url)(query());
 const visitedIds = () => { const v = store.get('visited', {}); return v.q === query() ? v.ids : []; };
 
+// 入力欄の高さを文字量に合わせる（最大5行、それ以上はスクロール）
+function autosize() {
+  qEl.style.height = 'auto';
+  qEl.style.height = qEl.scrollHeight + 4 + 'px';
+  qEl.scrollTop = qEl.scrollHeight; // 末尾（今入力した文字）を見せる
+}
 function changed() {
   store.set('lastQ', qEl.value);
+  autosize();
   renderSites();
 }
+// iPhoneキーボードの「検索」(改行)では改行せずキーボードを閉じる
+qEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); qEl.blur(); } });
 
 // ================= 検索サイトボタン =================
 function renderSites() {
@@ -522,7 +537,7 @@ function renderSettings() {
   });
 }
 
-renderSites(); renderCats(); renderHistory(); renderSettings();
+renderSites(); renderCats(); renderHistory(); renderSettings(); autosize();
 setKbMode(kbMode === 'native' ? 'kana' : kbMode); // 起動時は画面キーボードで開始
 window.addEventListener('resize', updateKbHeight);
 </script>
