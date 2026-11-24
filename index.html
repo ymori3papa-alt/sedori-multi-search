@@ -108,14 +108,17 @@
 
   /* ---- 仕入れ一覧 ---- */
   .totals { display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-bottom:8px; }
-  .totals div { background:var(--bg); border-radius:10px; padding:8px 10px; font-size:12px; color:var(--sub); }
-  .totals b { display:block; font-size:18px; color:var(--text); }
+  .totals div { background:var(--bg); border-radius:10px; padding:8px 10px; font-size:13px; color:var(--sub); }
+  .totals b { display:block; font-size:21px; color:var(--text); }
   .totals .profit b { color:#16a34a; }
   .totals .profit.neg b { color:var(--danger); }
   .pItem { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:8px 0; }
   .pItem .body { flex:1; min-width:0; }
-  .pItem .name { font-size:15px; font-weight:700; overflow-wrap:anywhere; }
-  .pItem .meta { font-size:12px; color:var(--sub); margin-top:2px; }
+  .pItem .name { font-size:17px; font-weight:700; overflow-wrap:anywhere; }
+  .pItem .amt { font-size:16px; margin-top:3px; }
+  .pItem .amt b { font-size:17px; }
+  .pItem .amt .pf { font-size:20px; }
+  .pItem .meta { font-size:13px; color:var(--sub); margin-top:3px; }
   .pItem .pf { font-weight:700; color:#16a34a; }
   .pItem .pf.neg { color:var(--danger); }
   .pItem .del, .pItem .edit { border:none; background:none; color:var(--danger); font-size:20px; padding:6px 6px; }
@@ -636,8 +639,9 @@ function renderPurchases() {
     row.className = 'pItem' + (i === editingIndex ? ' editing' : '');
     row.innerHTML = `<div class="body">
         <div class="name">${i === editingIndex ? '✏️ 修正中：' : ''}${esc(p.name)}</div>
-        <div class="meta">${esc(p.date)}　仕入 ${yen(p.buy)} → 販売 ${yen(p.sell)}<br>
-          手数料${p.rate}%・送料${yen(p.ship)}　利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
+        <div class="amt">仕入 <b>${yen(p.buy)}</b> → 販売 <b>${yen(p.sell)}</b></div>
+        <div class="amt">利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
+        <div class="meta">${esc(p.date)}　手数料${p.rate}%・送料${yen(p.ship)}</div>
       </div><button class="edit" aria-label="修正">✏️</button><button class="del" aria-label="削除">🗑</button>`;
     row.querySelector('.edit').onclick = () => startEdit(i);
     row.querySelector('.del').onclick = () => {
