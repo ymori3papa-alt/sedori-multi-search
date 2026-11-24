@@ -115,6 +115,9 @@
   .pItem { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:8px 0; }
   .pItem .body { flex:1; min-width:0; }
   .pItem .name { font-size:17px; font-weight:700; overflow-wrap:anywhere; }
+  /* 仕入れ番号（仕入れた順に 1, 2, 3…） */
+  .pItem .no { display:inline-block; min-width:1.7em; margin-right:6px; padding:1px 6px; border-radius:999px;
+    background:var(--accent); color:#fff; font-size:14px; text-align:center; vertical-align:2px; }
   .pItem .amt { font-size:16px; margin-top:3px; }
   .pItem .amt b { font-size:17px; }
   .pItem .amt .pf { font-size:20px; }
@@ -638,7 +641,7 @@ function renderPurchases() {
     const row = document.createElement('div');
     row.className = 'pItem' + (i === editingIndex ? ' editing' : '');
     row.innerHTML = `<div class="body">
-        <div class="name">${i === editingIndex ? '✏️ 修正中：' : ''}${esc(p.name)}</div>
+        <div class="name"><span class="no">${i + 1}</span>${i === editingIndex ? '✏️ 修正中：' : ''}${esc(p.name)}</div>
         <div class="amt">仕入 <b>${yen(p.buy)}</b> → 販売 <b>${yen(p.sell)}</b></div>
         <div class="amt">利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
         <div class="meta">${esc(p.date)}　手数料${p.rate}%・送料${yen(p.ship)}</div>
