@@ -91,6 +91,9 @@
   .calc input { width:130px; font-size:20px; text-align:right; padding:8px 10px; border-radius:10px;
     border:1px solid var(--line); background:var(--bg); color:var(--text); font-family:inherit; }
   .calc input.short { width:70px; }
+  .shipRow #cShip { width:90px; }
+  #cShipSel { max-width:150px; font-size:14px; padding:9px 6px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-family:inherit; }
   .calc .lbl { display:block; }
   .calc .minus { display:block; font-weight:400; font-size:12px; color:var(--sub); }
   .ratePreset { border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:8px;
@@ -189,7 +192,9 @@
       <div class="row"><span class="lbl">手数料<b id="cFee" class="minus">−0 円</b></span>
         <span><button type="button" class="ratePreset" data-rate="5">5%</button><button type="button" class="ratePreset" data-rate="10">10%</button>
         <input id="cRate" inputmode="decimal" class="short" aria-label="手数料率"> %</span></div>
-      <label>送料<span><input id="cShip" inputmode="numeric"> 円</span></label>
+      <div class="row shipRow"><span class="lbl">送料</span>
+        <span><select id="cShipSel" aria-label="送料の種類"></select>
+        <input id="cShip" inputmode="numeric" aria-label="送料"> 円</span></div>
       <label>仕入れ値<span><input id="cBuy" inputmode="numeric" placeholder="0"> 円</span></label>
       <div class="profitRow">利益 <span><output id="cProfit">0 円</output><small id="cRatio"></small></span></div>
       <button type="button" class="buyBtn" id="addPurchase">＋ 仕入れる（一覧に追加）</button>
@@ -597,6 +602,36 @@ const num = el => {
   return isFinite(v) ? v : 0;
 };
 const yen = n => n.toLocaleString('ja-JP') + ' 円';
+
+// 送料：らくらくメルカリ便（ヤマト）から選択 or 手入力
+// 料金はメルカリ公式コラム「メルカリ送料一覧【2026最新】」(jp-news.mercari.com/contents/1882) 2026-11-27 確認
+const MERCARI_SHIP = [
+  { id:'nekopos', name:'ネコポス',       price:210 },
+  { id:'compact', name:'コンパクト',     price:520, note:'450円＋BOX70円' },
+  { id:'60',  name:'宅急便60',  price:750 },
+  { id:'80',  name:'宅急便80',  price:850 },
+  { id:'100', name:'宅急便100', price:1050 },
+  { id:'120', name:'宅急便120', price:1200 },
+  { id:'140', name:'宅急便140', price:1450 },
+  { id:'160', name:'宅急便160', price:1700 },
+  { id:'180', name:'宅急便180', price:2100 },
+  { id:'200', name:'宅急便200', price:2500 },
+];
+const shipSel = $('cShipSel');
+shipSel.innerHTML = '<option value="">手入力</option><optgroup label="らくらくメルカリ便（ヤマト）">' +
+  MERCARI_SHIP.map(s => `<option value="${s.id}">${s.name} ${s.price.toLocaleString()}円${s.note ? `（${s.note}）` : ''}</option>`).join('') +
+  '</optgroup>';
+const shipMethod = () => MERCARI_SHIP.find(s => s.id === shipSel.value);
+shipSel.value = store.get('shipMethod', '');
+shipSel.addEventListener('change', () => {
+  const s = shipMethod();
+  if (s) calcIn.ship.value = s.price;
+  else { calcIn.ship.focus(); } // 「手入力」を選んだら金額欄へ
+  calc();
+});
+// 金額を手で打ち替えたら「手入力」扱いにする
+calcIn.ship.addEventListener('input', () => { shipSel.value = ''; });
+
 function calc() {
   const sell = num(calcIn.sell), fee = Math.floor(sell * num(calcIn.rate) / 100), ship = num(calcIn.ship);
   const buy = num(calcIn.buy);
@@ -608,6 +643,7 @@ function calc() {
   $('cProfit').textContent = sell ? yen(profit) : '— 円'; // 販売価格が未入力の間は計算しない
   $('cProfit').classList.toggle('neg', !!sell && profit < 0);
   store.set('calc', Object.fromEntries(Object.entries(calcIn).map(([k, el]) => [k, el.value])));
+  store.set('shipMethod', shipSel.value);
 }
 Object.values(calcIn).forEach(el => {
   el.addEventListener('input', calc);
@@ -618,7 +654,7 @@ Object.values(calcIn).forEach(el => {
 document.querySelectorAll('.ratePreset').forEach(b => b.addEventListener('click', e => {
   e.preventDefault(); calcIn.rate.value = b.dataset.rate; calc();
 }));
-$('calcReset').onclick = () => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; calc(); };
+$('calcReset').onclick = () => { calcIn.rate.value = CALC_DEFAULT.rate; calcIn.ship.value = CALC_DEFAULT.ship; shipSel.value = ''; calc(); };
 calc();
 
 // ================= 仕入れ一覧 =================
@@ -644,7 +680,7 @@ function renderPurchases() {
         <div class="name"><span class="no">${i + 1}</span>${i === editingIndex ? '✏️ 修正中：' : ''}${esc(p.name)}</div>
         <div class="amt">仕入 <b>${yen(p.buy)}</b> → 販売 <b>${yen(p.sell)}</b></div>
         <div class="amt">利益 <span class="pf${p.profit < 0 ? ' neg' : ''}">${yen(p.profit)}</span></div>
-        <div class="meta">${esc(p.date)}　手数料${p.rate}%・送料${yen(p.ship)}</div>
+        <div class="meta">${esc(p.date)}　手数料${p.rate}%・送料${p.shipName ? esc(p.shipName) + ' ' : ''}${yen(p.ship)}</div>
       </div><button class="edit" aria-label="修正">✏️</button><button class="del" aria-label="削除">🗑</button>`;
     row.querySelector('.edit').onclick = () => startEdit(i);
     row.querySelector('.del').onclick = () => {
@@ -661,11 +697,11 @@ function renderPurchases() {
 // ✏️：一覧の値を上の検索欄・利益計算欄に戻して、そこで修正する
 function startEdit(i) {
   const p = purchases[i];
-  if (editingIndex < 0) beforeEdit = { q: qEl.value, rate: calcIn.rate.value, ship: calcIn.ship.value };
+  if (editingIndex < 0) beforeEdit = { q: qEl.value, rate: calcIn.rate.value, ship: calcIn.ship.value, shipId: shipSel.value };
   editingIndex = i;
   qEl.value = p.name === '（商品名なし）' ? '' : p.name; changed();
   calcIn.sell.value = p.sell || ''; calcIn.buy.value = p.buy || '';
-  calcIn.rate.value = p.rate; calcIn.ship.value = p.ship; calc();
+  calcIn.rate.value = p.rate; calcIn.ship.value = p.ship; shipSel.value = p.shipId || ''; calc();
   setEditUI(`「${p.name}」を修正中です。上の検索欄・金額を直して「修正を保存」を押してください。`);
   renderPurchases();
   if (!$('kb').hidden) setKbMode('hidden');
@@ -676,7 +712,7 @@ function endEdit(msg) {
   calcIn.sell.value = ''; calcIn.buy.value = '';
   if (beforeEdit) {
     qEl.value = beforeEdit.q; changed();
-    calcIn.rate.value = beforeEdit.rate; calcIn.ship.value = beforeEdit.ship;
+    calcIn.rate.value = beforeEdit.rate; calcIn.ship.value = beforeEdit.ship; shipSel.value = beforeEdit.shipId;
     beforeEdit = null;
   }
   calc(); setEditUI(msg);
@@ -694,7 +730,8 @@ $('addPurchase').onclick = () => {
   if (!sell && !buy) { $('addMsg').textContent = '販売価格か仕入れ値を入力してください。'; return; }
   const fee = Math.floor(sell * rate / 100);
   const name = query() || '（商品名なし）';
-  const vals = { name, sell, buy, rate, ship, fee, profit: sell - fee - ship - buy };
+  const vals = { name, sell, buy, rate, ship, fee, profit: sell - fee - ship - buy,
+                 shipId: shipSel.value, shipName: shipMethod()?.name || '' };
   if (editingIndex >= 0) {
     purchases[editingIndex] = { ...purchases[editingIndex], ...vals };
     store.set('purchases', purchases);
